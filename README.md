@@ -1,17 +1,33 @@
-# Highly Available Multi-Tier AWS Network Architecture
-### Infrastructure as Code | Terraform | AWS VPC | West Midlands Police Interview Project
+# Secure Multi-Tier AWS Network Architecture
+### Built with Terraform (Infrastructure as Code) | AWS | Cloud Security
 
 ---
 
 ## Overview
 
-This project provisions a secure, multi-tier network architecture on AWS using 
-Terraform. It demonstrates the principle of **defence-in-depth** — a core 
-requirement for infrastructure supporting sensitive policing systems such as 
-Response, Custody and Intelligence data platforms.
+This project builds a secure network environment on AWS using Terraform — 
+a tool that lets you provision and spin up infrastructure as code rather than clicking 
+through the AWS Console manually.
 
-The architecture physically isolates public-facing resources from private 
-backend systems, ensuring sensitive data has no direct route to the internet.
+The goal is to show how you can separate public-facing resources from 
+sensitive backend systems, so that critical data is never directly exposed 
+to the internet. This mirrors the kind of architecture you would need in 
+environments where data security is non-negotiable, such as the public sector 
+or law enforcement systems.
+
+---
+
+## What Problem Does This Solve?
+
+Imagine a bank. Customers interact with the front desk — but the vault is 
+locked away in a back room that only authorised staff can access. You would 
+never leave the vault accesible to anyone. 
+
+This project applies that same logic to cloud infrastructure:
+
+- The **Public Subnet** is the front desk — it faces the internet
+- The **Private Subnet** is the vault — it is completely hidden from the internet
+- **Security Groups** are the security guards — they decide who is allowed in and out
 
 ---
 
@@ -25,80 +41,106 @@ Internet Gateway (IGW)
     ▼
 ┌─────────────────────────────────────┐
 │           VPC: 10.0.0.0/16          │
+│        (Our private network)        │
 │                                     │
 │  ┌──────────────────────────────┐   │
 │  │  Public Subnet: 10.0.1.0/24  │   │
-│  │  (Load Balancer / Bastion)   │   │
-│  │  Security Group: HTTPS only  │   │
+│  │  (Faces the internet)        │   │
+│  │  Only HTTPS traffic allowed  │   │
 │  └──────────────┬───────────────┘   │
-│                 │ internal only     │
+│                 │                   │
+│        Internal traffic only        │
+│                 │                   │
 │  ┌──────────────▼───────────────┐   │
 │  │  Private Subnet: 10.0.2.0/24 │   │
-│  │  (Databases / App Servers)   │   │
-│  │  Security Group: VPC only    │   │
+│  │  (Hidden from the internet)  │   │
+│  │  Only talks to public subnet │   │
 │  └──────────────────────────────┘   │
 └─────────────────────────────────────┘
 ```
 
 ---
 
-## Security Design Decisions
+## What Gets Built
 
-| Decision | Rationale |
+| Resource | What It Does |
 |---|---|
-| `eu-west-2` (London) region | UK data sovereignty for law enforcement data |
-| Private subnet has no IGW route | Databases cannot reach or be reached from the internet |
-| HTTPS (443) only on public SG | No plaintext traffic permitted |
-| Private SG egress locked to VPC CIDR | Prevents data exfiltration if a resource is compromised |
-| Separate route tables per subnet | Changes to one subnet's routing cannot accidentally affect the other |
+| **VPC** | A private, isolated network in AWS — nothing gets in unless we allow it |
+| **Public Subnet** | Where internet-facing resources live |
+| **Private Subnet** | Where sensitive systems and data live — no internet access |
+| **Internet Gateway** | The single controlled entry point between our network and the internet |
+| **Route Tables** | Traffic rules — tells each subnet where it is and isn't allowed to send data |
+| **Security Groups** | Acts like a firewall — controls exactly which ports and sources can connect |
 
 ---
 
-## AWS Resources Provisioned
+## Key Security Decisions
 
-- **VPC** — Isolated private network (`10.0.0.0/16`)
-- **Public Subnet** — Internet-facing tier (`10.0.1.0/24`)
-- **Private Subnet** — Protected backend tier (`10.0.2.0/24`)
-- **Internet Gateway** — Controlled bridge to the internet
-- **Route Tables** — Public routes to IGW; private stays local
-- **Security Groups** — Least-privilege firewall rules per tier
+**London region (eu-west-2)**
+All infrastructure is deployed in the UK, ensuring data stays within 
+UK jurisdiction.
+
+**Private subnet has no internet route**
+This is intentional. The private subnet's route table has no path to the 
+internet gateway — meaning anything inside it simply cannot be reached 
+from the outside world, even by accident.
+
+**HTTPS only**
+The public subnet only accepts encrypted traffic on port 443. 
+No unencrypted HTTP traffic is permitted.
+
+**Least Privilege**
+Every security group only allows the minimum access required. 
+The private subnet can only receive traffic from the public subnet — 
+nothing else.
 
 ---
 
-## Prerequisites
+## How to Use This Project
 
-- [Terraform](https://developer.hashicorp.com/terraform/install) installed
-- AWS CLI configured with valid credentials (`aws configure`)
+### What you need first
+- [Terraform](https://developer.hashicorp.com/terraform/install) installed on your machine
 - An AWS account
+- AWS CLI set up (`aws configure`)
 
----
-
-## Usage
+### Steps
 ```bash
-# Clone the repo
-git clone https://github.com/YOUR_USERNAME/wmp-aws-vpc-terraform.git
-cd wmp-aws-vpc-terraform
+# 1. Clone this repository to your machine
+git clone https://github.com/YOUR_USERNAME/aws-vpc-terraform.git
+cd aws-vpc-terraform
 
-# Initialise Terraform
+# 2. Initialise Terraform (downloads the necessary AWS plugin)
 terraform init
 
-# Preview what will be created
+# 3. Preview what will be created — nothing is built yet
 terraform plan
 
-# Deploy the infrastructure
+# 4. Build the infrastructure
 terraform apply
 
-# Tear down when done (avoids AWS charges)
+# 5. When finished, tear everything down to avoid AWS charges
 terraform destroy
 ```
 
 ---
 
-## Infrastructure Lifecycle
+## Deployment Evidence
 
-This project follows responsible infrastructure management. After verification 
-via the AWS Console Resource Map, `terraform destroy` was run to ensure 
-zero ongoing cost — consistent with cost-efficient cloud operations.
+After running `terraform apply`, the AWS Console Resource Map confirmed 
+all resources were created correctly. `terraform destroy` was then run 
+to remove all resources and ensure no ongoing costs.
+
+![AWS VPC Resource Map](screenshots/vpc-resource-map.png)
+
+---
+
+## What I Learned
+
+- How to write Infrastructure as Code using Terraform
+- How to design a network that separates public and private resources
+- How security groups and route tables work together to control traffic
+- The importance of the Principle of Least Privilege in cloud security
+- How to manage the full infrastructure lifecycle — build, verify, destroy
 
 ---
 
